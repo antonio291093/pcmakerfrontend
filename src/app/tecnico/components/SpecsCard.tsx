@@ -354,6 +354,7 @@ export default function SpecsCard() {
         estado_id: data.estado_id,
         cantidad: 1,
         sucursal_id: sucursalId, 
+        tecnico_id: usuarioId,
         ramModules: data.ramModules.filter((mod:any) => mod.memoria_ram_id),
         storages: data.storages.filter((sto:any) => sto.almacenamiento_id),
       };
@@ -467,6 +468,7 @@ export default function SpecsCard() {
       lote_etiqueta_id: selectedSerialId,
       specs,
       estado_id: selectedEstadoId,
+      tecnico_id: usuarioId,
       ramModules: ramModules
         .filter((mod) => mod.memoria_ram_id)
         .map((mod) => ({
