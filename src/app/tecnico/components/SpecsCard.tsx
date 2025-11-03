@@ -417,6 +417,7 @@ export default function SpecsCard() {
             fecha_creacion: new Date().toISOString(),
             memoria_ram_id: ram.memoria_ram_id,
             almacenamiento_id: null,
+            sucursal_id: sucursalId,
           };
           await fetch(`${API_URL}/api/inventario`, {
             method: "POST",
@@ -434,6 +435,7 @@ export default function SpecsCard() {
             fecha_creacion: new Date().toISOString(),
             memoria_ram_id: null,
             almacenamiento_id: sto.almacenamiento_id,
+            sucursal_id: sucursalId,
           };
           await fetch(`${API_URL}/api/inventario`, {
             method: "POST",
