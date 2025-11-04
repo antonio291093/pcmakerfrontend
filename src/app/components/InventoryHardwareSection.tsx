@@ -50,13 +50,48 @@ export default function InventoryHardwareSection() {
     cargarInventario();
   }, []);
 
+  // 🔹 Cuando el usuario elige editar un artículo
+  useEffect(() => {
+    if (editando) {
+      Swal.fire({
+        title: 'Editar artículo',
+        html: `
+          <input id="swal-descripcion" class="swal2-input" value="${editando.descripcion}" placeholder="Descripción">
+          <input id="swal-cantidad" type="number" class="swal2-input" value="${editando.cantidad}" placeholder="Cantidad">
+        `,
+        focusConfirm: false,
+        showCancelButton: true,
+        confirmButtonText: 'Guardar cambios',
+        cancelButtonText: 'Cancelar',
+        preConfirm: () => {
+          const descripcion = (document.getElementById('swal-descripcion') as HTMLInputElement).value;
+          const cantidad = parseInt((document.getElementById('swal-cantidad') as HTMLInputElement).value);
+
+          if (!descripcion || isNaN(cantidad)) {
+            Swal.showValidationMessage('Todos los campos son obligatorios');
+            return null;
+          }
+
+          return { ...editando, descripcion, cantidad };
+        },
+      }).then((res) => {
+        if (res.isConfirmed && res.value) {
+          guardarInventario(res.value as InventarioItem);
+        } else {
+          setEditando(null); // Cancelado
+        }
+      });
+    }
+  }, [editando]);
+
+
   // 🔸 Guardar nuevo o editar existente
   const guardarInventario = async (item: InventarioItem) => {
     try {
       const metodo = editando ? 'PUT' : 'POST';
       const url = editando
         ? `${API_URL}/api/inventario/${editando.id}`
-        : `${API_URL}/api/inventario`;
+        : `${API_URL}/api/inventario/general`;
 
       const resp = await fetch(url, {
         method: metodo,
@@ -69,11 +104,13 @@ export default function InventoryHardwareSection() {
       const nuevo = await resp.json();
 
       if (editando) {
+        nuevo.descripcion = nuevo.descripcion || nuevo.especificacion;
         setInventario((prev) =>
           prev.map((i) => (i.id === nuevo.id ? nuevo : i))
         );
         Swal.fire('Actualizado', 'El artículo se actualizó correctamente', 'success');
       } else {
+        nuevo.descripcion = nuevo.descripcion || nuevo.especificacion;
         setInventario((prev) => [nuevo, ...prev]);
         Swal.fire('Agregado', 'Artículo agregado al inventario', 'success');
       }
@@ -151,19 +188,38 @@ export default function InventoryHardwareSection() {
           onClick={() =>
             Swal.fire({
               title: 'Agregar nuevo artículo',
-              input: 'text',
-              inputLabel: 'Nombre o descripción',
+              html: `
+                <input id="swal-descripcion" class="swal2-input" placeholder="Descripción">
+                <select id="swal-estado" class="swal2-select">
+                  <option value="nuevo">Nuevo</option>
+                  <option value="usado" selected>Usado</option>
+                </select>
+              `,
+              focusConfirm: false,
               showCancelButton: true,
               confirmButtonText: 'Guardar',
+              cancelButtonText: 'Cancelar',
+              preConfirm: () => {
+                const descripcion = (document.getElementById('swal-descripcion') as HTMLInputElement).value;
+                const estado = (document.getElementById('swal-estado') as HTMLSelectElement).value;
+
+                if (!descripcion.trim()) {
+                  Swal.showValidationMessage('La descripción es obligatoria');
+                  return null;
+                }
+
+                return { descripcion, estado };
+              },
             }).then((res) => {
               if (res.isConfirmed && res.value) {
+                const { descripcion, estado } = res.value;
                 guardarInventario({
                   id: 0,
                   tipo: 'Otro',
-                  descripcion: res.value,
+                  descripcion,
                   cantidad: 1,
                   disponibilidad: true,
-                  estado: 'usado',
+                  estado,
                   sucursal_id: 1,
                 } as InventarioItem);
               }

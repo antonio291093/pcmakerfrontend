@@ -4,9 +4,8 @@ import { useRouter } from 'next/navigation'
 
 import Sidebar from './components/Sidebar'
 import UserManagement from './components/UserManagement'
-import InventoryManagement from './components/InventoryManagement'
+import InventoryManagement from '../components/InventorySelectorCard';
 import ReportsManagement from './components/ReportsManagement'
-import TaskAssignment from './components/TaskAssignment'
 import Configurations from './components/Configurations'
 import RecibirLote from '../components/RecibirLote'
 
@@ -41,7 +40,6 @@ export default function AdminDashboard() {
         {active === 'usuarios' && <UserManagement />}
         {active === 'inventario' && <InventoryManagement />}
         {active === 'reportes' && <ReportsManagement />}
-        {active === 'tareas' && <TaskAssignment />}
         {active === 'configuracion' && <Configurations />}
         {active === 'lote' && <RecibirLote />}
       </main>

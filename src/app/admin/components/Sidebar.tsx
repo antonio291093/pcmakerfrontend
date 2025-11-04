@@ -14,8 +14,7 @@ type SidebarProps = {
 const navItems = [
   { label: 'Usuarios', icon: <FaUsers />, path: 'usuarios' },
   { label: 'Inventario', icon: <FaBoxOpen />, path: 'inventario' },
-  { label: 'Reportes', icon: <FaFileAlt />, path: 'reportes' },
-  { label: 'Asignar tareas', icon: <FaTasks />, path: 'tareas' },
+  { label: 'Reportes', icon: <FaFileAlt />, path: 'reportes' },  
   { label: 'Configuración', icon: <FaCog />, path: 'configuracion' },
   { label: 'Recibir lote', icon: <FaTruck />, path: 'lote' },
   { label: 'Cerrar sesión', icon: <FaSignOutAlt />, path: 'logout' }
