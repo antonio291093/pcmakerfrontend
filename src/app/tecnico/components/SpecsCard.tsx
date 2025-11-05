@@ -299,7 +299,7 @@ export default function SpecsCard() {
 
   const generarComision = async (equipoGuardado: any, usuario_id: number) => {
     try {
-      // 1. Validar si ya existe la comisión para este equipo
+      // 1️⃣ Validar si ya existe la comisión para este equipo
       const respExiste = await fetch(`${API_URL}/api/comisiones/equipo/${equipoGuardado.id}`, {
         method: "GET",
         headers: { "Content-Type": "application/json" },
@@ -311,24 +311,43 @@ export default function SpecsCard() {
         return true;
       }
 
-      // 2. Si no existe, crear la comisión
+      // 2️⃣ Obtener configuración de comision_armado desde el backend
+      let monto = 20; // valor por defecto
+      try {
+        const respConfig = await fetch(`${API_URL}/api/configuraciones/comision_armado`, {
+          credentials: "include",
+        });
+        if (respConfig.ok) {
+          const data = await respConfig.json();
+          const parsed = parseFloat(data?.valor);
+          if (!isNaN(parsed)) monto = parsed;
+        } else {
+          console.warn("⚠️ No se pudo obtener comision_armado, usando valor por defecto (20)");
+        }
+      } catch (err) {
+        console.error("Error al obtener configuración de comisión:", err);
+      }
+
+      // 3️⃣ Crear la comisión con el valor obtenido
       const respCrear = await fetch(`${API_URL}/api/comisiones`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
         body: JSON.stringify({
           usuario_id,
-          venta_id: null, // Asigna valores si aplica
-          mantenimiento_id: null, // Asigna valores si aplica
-          monto: 20,
+          venta_id: null,
+          mantenimiento_id: null,
+          monto,
           fecha_creacion: new Date().toISOString(),
           equipo_id: equipoGuardado.id,
         }),
       });
+
       if (respCrear.ok) {
+        //console.log(`✅ Comisión por armado generada correctamente ($${monto})`);
         return true;
       } else {
-        // Error creando la comisión
+        console.error("❌ Error al generar comisión por armado");
         return false;
       }
     } catch (err) {

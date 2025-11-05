@@ -77,10 +77,33 @@ export default function MaintenanceForm() {
     }
   };
 
-  const generarComisionMantenimiento = async (mantenimiento: any, tecnicoId: any, costo: any) => {
+  const generarComisionMantenimiento = async (
+    mantenimiento: any,
+    tecnicoId: any,
+    costo: number
+  ) => {
     try {
-      const comision = costo * 0.03; // 3% del costo del mantenimiento
+      // 🔹 1. Obtener configuración desde el backend
+      const respConfig = await fetch(`${API_URL}/api/configuraciones/comision_mantenimiento`, {
+        credentials: "include",
+      });
 
+      let tasa = 0.03; // valor por defecto
+
+      if (respConfig.ok) {
+        const data = await respConfig.json();
+        if (data?.valor) {
+          const parsed = parseFloat(data.valor);
+          if (!isNaN(parsed)) tasa = parsed; // ya guardas el valor como 0.3 o 0.03 en BD
+        }
+      } else {
+        console.warn("⚠️ No se pudo obtener la configuración de comisión, usando valor por defecto (3%)");
+      }
+
+      // 🔹 2. Calcular comisión
+      const comision = costo * tasa;
+
+      // 🔹 3. Registrar comisión
       const respCrear = await fetch(`${API_URL}/api/comisiones`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -96,7 +119,7 @@ export default function MaintenanceForm() {
       });
 
       if (respCrear.ok) {
-        console.log("✅ Comisión generada correctamente");
+        //console.log(`✅ Comisión generada correctamente (${(tasa * 100).toFixed(2)}%)`);
         return true;
       } else {
         console.error("❌ Error al generar comisión");

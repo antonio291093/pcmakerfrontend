@@ -8,13 +8,23 @@ import {
   FaHdd,
   FaPlus,
   FaEdit,
-  FaTrash,
+  FaTrash,       
+  FaHeadphones,
+  FaUsb,
+  FaMouse,
+  FaKeyboard,
+  FaWifi,
+  FaCamera, 
+  FaGamepad,
+  FaTools,
+  FaQuestionCircle
 } from 'react-icons/fa';
 
 interface InventarioItem {
   id: number;
   tipo: string;
-  descripcion: string;
+  descripcion?: string;
+  especificacion?: string;
   cantidad: number;
   disponibilidad: boolean;
   estado: string;
@@ -149,22 +159,44 @@ export default function InventoryHardwareSection() {
     }
   };
 
-  // 🔹 Selección de ícono por tipo
-  const obtenerIcono = (tipo: string) => {
-    switch (tipo.toLowerCase()) {
-      case 'ram':
-      case 'memoria':
-        return <FaMemory className="text-indigo-600 text-2xl" />;
-      case 'disco':
-      case 'ssd':
-      case 'hdd':
-        return <FaHdd className="text-amber-600 text-2xl" />;
-      case 'fuente':
-      case 'psu':
-        return <FaMicrochip className="text-green-600 text-2xl" />;
-      default:
-        return <FaMicrochip className="text-gray-500 text-2xl" />;
+  const obtenerIcono = (tipo: string, especificacion?: string) => {
+    const texto = `${tipo} ${especificacion || ""}`.toLowerCase().trim();
+        
+    if (texto.includes("ram") || texto.includes("ddr")) {
+      return <FaMemory className="text-indigo-600 text-3xl" />;
     }
+    if (texto.includes("ssd") || texto.includes("hdd") || texto.includes("disco")) {
+      return <FaHdd className="text-amber-600 text-3xl" />;
+    }
+    if (texto.includes("mouse")) {
+      return <FaMouse className="text-blue-600 text-3xl" />;
+    }
+    if (texto.includes("teclado") || texto.includes("keyboard")) {
+      return <FaKeyboard className="text-gray-700 text-3xl" />;
+    }
+    if (texto.includes("audifono") || texto.includes("auricular") || texto.includes("headset")) {
+      return <FaHeadphones className="text-pink-600 text-3xl" />;
+    }
+    if (texto.includes("gamepad") || texto.includes("control")) {
+      return <FaGamepad className="text-purple-600 text-3xl" />;
+    }
+    if (texto.includes("usb") || texto.includes("adaptador") || texto.includes("bluetooth")) {
+      return <FaUsb className="text-orange-600 text-3xl" />;
+    }
+    if (texto.includes("router") || texto.includes("wifi") || texto.includes("network")) {
+      return <FaWifi className="text-green-600 text-3xl" />;
+    }
+    if (texto.includes("camara") || texto.includes("webcam")) {
+      return <FaCamera className="text-rose-600 text-3xl" />;
+    }
+    if (texto.includes("cable") || texto.includes("tipo c") || texto.includes("hdmi")) {
+      return <FaTools className="text-teal-600 text-3xl" />;
+    }
+    if (texto.includes("fuente") || texto.includes("psu")) {
+      return <FaMicrochip className="text-green-600 text-3xl" />;
+    }
+
+    return <FaQuestionCircle className="text-gray-400 text-3xl" />;
   };
 
   if (loading) {
@@ -239,8 +271,8 @@ export default function InventoryHardwareSection() {
             className="p-4 rounded-lg bg-gray-50 shadow-sm border border-gray-100 flex flex-col items-start"
           >
             <div className="flex items-center gap-3 mb-2">
-              {obtenerIcono(item.tipo)}
-              <span className="font-semibold text-gray-800">{item.descripcion}</span>
+              {obtenerIcono(item.tipo, item.especificacion || item.descripcion)}
+              <span className="font-semibold text-gray-800"> {item.descripcion || item.especificacion}</span>               
             </div>
             <span className="text-sm text-gray-600">
               Cantidad: {item.cantidad}
