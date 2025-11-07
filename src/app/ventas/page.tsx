@@ -3,11 +3,13 @@ import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 
 import Sidebar from './components/Sidebar'
-import InventoryList from './components/InventoryList'
+import InventoryList from '../components/InventorySelectorCard';
 import SalesForm from './components/SalesForm'
 import ReportsHistory from './components/ReportsHistory'
 import CommissionsCard from './components/CommissionsCard'
 import RecibirLote from '../components/RecibirLote'
+import CorteCaja from './components/CorteCaja'
+
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
 
@@ -42,6 +44,7 @@ export default function DashboardPage() {
         {active === 'reportes' && <ReportsHistory />}
         {active === 'comisiones' && <CommissionsCard />}
         {active === 'lote' && <RecibirLote />}
+        {active === 'caja' && <CorteCaja />}
       </main>
     </>
   )

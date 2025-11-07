@@ -1,7 +1,7 @@
 'use client'
 import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
-import { FaBoxOpen, FaShoppingCart, FaFileAlt, FaDollarSign, FaTruck, FaSignOutAlt, FaBars } from 'react-icons/fa'
+import { FaBoxOpen, FaShoppingCart, FaFileAlt, FaDollarSign, FaTruck, FaSignOutAlt, FaBars, FaCashRegister } from 'react-icons/fa'
 import { useRouter } from 'next/navigation'
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
@@ -12,6 +12,7 @@ const navItems = [
   { label: 'Reportes e historial', icon: <FaFileAlt />, path: 'reportes' },
   { label: 'Comisiones', icon: <FaDollarSign />, path: 'comisiones' },
   { label: 'Recibir lote', icon: <FaTruck />, path: 'lote' },
+  { label: 'Corte de caja', icon: <FaCashRegister />, path: 'caja' },
   { label: 'Cerrar sesión', icon: <FaSignOutAlt />, path: 'logout' }
 ]
 
@@ -57,14 +58,17 @@ export default function Sidebar({ active, setActive }: { active: string; setActi
       <motion.aside
         initial={false}
         animate={{ x: isDesktop ? 0 : open ? 0 : -140 }}
-        transition={{ type: 'spring', stiffness: 80, delay: 0.15 }}
+        transition={{ type: "spring", stiffness: 80, delay: 0.15 }}
         className={`
-          fixed top-0 left-0 z-30 h-full w-20 bg-white
+          fixed top-0 left-0 z-30 h-full bg-white
           border-r border-gray-200 shadow-sm py-4 px-4
-          flex flex-col overflow-y-auto
+          flex flex-col
+          overflow-y-hidden
+          overflow-x-hidden
+          w-25
           ${open ? 'block' : 'hidden'} lg:flex
         `}
-        style={open && !isDesktop ? { boxShadow: '0 0 0 100vmax rgba(0,0,0,0.4)' } : {}}
+        style={open && !isDesktop ? { boxShadow: "0 0 0 100vmax rgba(0,0,0,0.4)" } : {}}
       >
         <div className="mb-8 flex justify-center">
           <img src="/pcmaker.png" alt="Logo" className="h-20 w-20 rounded-full shadow" />

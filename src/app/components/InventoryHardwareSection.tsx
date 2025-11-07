@@ -8,13 +8,13 @@ import {
   FaHdd,
   FaPlus,
   FaEdit,
-  FaTrash,       
+  FaTrash,
   FaHeadphones,
   FaUsb,
   FaMouse,
   FaKeyboard,
   FaWifi,
-  FaCamera, 
+  FaCamera,
   FaGamepad,
   FaTools,
   FaQuestionCircle
@@ -29,6 +29,7 @@ interface InventarioItem {
   disponibilidad: boolean;
   estado: string;
   sucursal_id: number;
+  precio?: number; // ✅ Nuevo campo
 }
 
 export default function InventoryHardwareSection() {
@@ -60,14 +61,15 @@ export default function InventoryHardwareSection() {
     cargarInventario();
   }, []);
 
-  // 🔹 Cuando el usuario elige editar un artículo
+  // 🔹 Modal de edición de artículo
   useEffect(() => {
     if (editando) {
       Swal.fire({
         title: 'Editar artículo',
         html: `
-          <input id="swal-descripcion" class="swal2-input" value="${editando.descripcion}" placeholder="Descripción">
+          <input id="swal-descripcion" class="swal2-input" value="${editando.descripcion || ''}" placeholder="Descripción">
           <input id="swal-cantidad" type="number" class="swal2-input" value="${editando.cantidad}" placeholder="Cantidad">
+          <input id="swal-precio" type="number" step="0.01" min="0" class="swal2-input" value="${editando.precio || 0}" placeholder="Precio (MXN)">
         `,
         focusConfirm: false,
         showCancelButton: true,
@@ -76,24 +78,24 @@ export default function InventoryHardwareSection() {
         preConfirm: () => {
           const descripcion = (document.getElementById('swal-descripcion') as HTMLInputElement).value;
           const cantidad = parseInt((document.getElementById('swal-cantidad') as HTMLInputElement).value);
+          const precio = parseFloat((document.getElementById('swal-precio') as HTMLInputElement).value);
 
-          if (!descripcion || isNaN(cantidad)) {
+          if (!descripcion || isNaN(cantidad) || isNaN(precio)) {
             Swal.showValidationMessage('Todos los campos son obligatorios');
             return null;
           }
 
-          return { ...editando, descripcion, cantidad };
+          return { ...editando, descripcion, cantidad, precio };
         },
       }).then((res) => {
         if (res.isConfirmed && res.value) {
           guardarInventario(res.value as InventarioItem);
         } else {
-          setEditando(null); // Cancelado
+          setEditando(null);
         }
       });
     }
   }, [editando]);
-
 
   // 🔸 Guardar nuevo o editar existente
   const guardarInventario = async (item: InventarioItem) => {
@@ -113,14 +115,14 @@ export default function InventoryHardwareSection() {
       if (!resp.ok) throw new Error('Error guardando inventario');
       const nuevo = await resp.json();
 
+      nuevo.descripcion = nuevo.descripcion || nuevo.especificacion;
+
       if (editando) {
-        nuevo.descripcion = nuevo.descripcion || nuevo.especificacion;
         setInventario((prev) =>
           prev.map((i) => (i.id === nuevo.id ? nuevo : i))
         );
         Swal.fire('Actualizado', 'El artículo se actualizó correctamente', 'success');
       } else {
-        nuevo.descripcion = nuevo.descripcion || nuevo.especificacion;
         setInventario((prev) => [nuevo, ...prev]);
         Swal.fire('Agregado', 'Artículo agregado al inventario', 'success');
       }
@@ -160,42 +162,18 @@ export default function InventoryHardwareSection() {
   };
 
   const obtenerIcono = (tipo: string, especificacion?: string) => {
-    const texto = `${tipo} ${especificacion || ""}`.toLowerCase().trim();
-        
-    if (texto.includes("ram") || texto.includes("ddr")) {
-      return <FaMemory className="text-indigo-600 text-3xl" />;
-    }
-    if (texto.includes("ssd") || texto.includes("hdd") || texto.includes("disco")) {
-      return <FaHdd className="text-amber-600 text-3xl" />;
-    }
-    if (texto.includes("mouse")) {
-      return <FaMouse className="text-blue-600 text-3xl" />;
-    }
-    if (texto.includes("teclado") || texto.includes("keyboard")) {
-      return <FaKeyboard className="text-gray-700 text-3xl" />;
-    }
-    if (texto.includes("audifono") || texto.includes("auricular") || texto.includes("headset")) {
-      return <FaHeadphones className="text-pink-600 text-3xl" />;
-    }
-    if (texto.includes("gamepad") || texto.includes("control")) {
-      return <FaGamepad className="text-purple-600 text-3xl" />;
-    }
-    if (texto.includes("usb") || texto.includes("adaptador") || texto.includes("bluetooth")) {
-      return <FaUsb className="text-orange-600 text-3xl" />;
-    }
-    if (texto.includes("router") || texto.includes("wifi") || texto.includes("network")) {
-      return <FaWifi className="text-green-600 text-3xl" />;
-    }
-    if (texto.includes("camara") || texto.includes("webcam")) {
-      return <FaCamera className="text-rose-600 text-3xl" />;
-    }
-    if (texto.includes("cable") || texto.includes("tipo c") || texto.includes("hdmi")) {
-      return <FaTools className="text-teal-600 text-3xl" />;
-    }
-    if (texto.includes("fuente") || texto.includes("psu")) {
-      return <FaMicrochip className="text-green-600 text-3xl" />;
-    }
-
+    const texto = `${tipo} ${especificacion || ''}`.toLowerCase().trim();
+    if (texto.includes('ram') || texto.includes('ddr')) return <FaMemory className="text-indigo-600 text-3xl" />;
+    if (texto.includes('ssd') || texto.includes('hdd') || texto.includes('disco')) return <FaHdd className="text-amber-600 text-3xl" />;
+    if (texto.includes('mouse')) return <FaMouse className="text-blue-600 text-3xl" />;
+    if (texto.includes('teclado') || texto.includes('keyboard')) return <FaKeyboard className="text-gray-700 text-3xl" />;
+    if (texto.includes('audifono') || texto.includes('auricular') || texto.includes('headset')) return <FaHeadphones className="text-pink-600 text-3xl" />;
+    if (texto.includes('gamepad') || texto.includes('control')) return <FaGamepad className="text-purple-600 text-3xl" />;
+    if (texto.includes('usb') || texto.includes('adaptador') || texto.includes('bluetooth')) return <FaUsb className="text-orange-600 text-3xl" />;
+    if (texto.includes('router') || texto.includes('wifi') || texto.includes('network')) return <FaWifi className="text-green-600 text-3xl" />;
+    if (texto.includes('camara') || texto.includes('webcam')) return <FaCamera className="text-rose-600 text-3xl" />;
+    if (texto.includes('cable') || texto.includes('tipo c') || texto.includes('hdmi')) return <FaTools className="text-teal-600 text-3xl" />;
+    if (texto.includes('fuente') || texto.includes('psu')) return <FaMicrochip className="text-green-600 text-3xl" />;
     return <FaQuestionCircle className="text-gray-400 text-3xl" />;
   };
 
@@ -222,6 +200,7 @@ export default function InventoryHardwareSection() {
               title: 'Agregar nuevo artículo',
               html: `
                 <input id="swal-descripcion" class="swal2-input" placeholder="Descripción">
+                <input id="swal-precio" type="number" step="0.01" min="0" class="swal2-input" placeholder="Precio (MXN)">
                 <select id="swal-estado" class="swal2-select">
                   <option value="nuevo">Nuevo</option>
                   <option value="usado" selected>Usado</option>
@@ -233,18 +212,19 @@ export default function InventoryHardwareSection() {
               cancelButtonText: 'Cancelar',
               preConfirm: () => {
                 const descripcion = (document.getElementById('swal-descripcion') as HTMLInputElement).value;
+                const precio = parseFloat((document.getElementById('swal-precio') as HTMLInputElement).value);
                 const estado = (document.getElementById('swal-estado') as HTMLSelectElement).value;
 
-                if (!descripcion.trim()) {
-                  Swal.showValidationMessage('La descripción es obligatoria');
+                if (!descripcion.trim() || isNaN(precio)) {
+                  Swal.showValidationMessage('Todos los campos son obligatorios');
                   return null;
                 }
 
-                return { descripcion, estado };
+                return { descripcion, precio, estado };
               },
             }).then((res) => {
               if (res.isConfirmed && res.value) {
-                const { descripcion, estado } = res.value;
+                const { descripcion, precio, estado } = res.value;
                 guardarInventario({
                   id: 0,
                   tipo: 'Otro',
@@ -253,6 +233,7 @@ export default function InventoryHardwareSection() {
                   disponibilidad: true,
                   estado,
                   sucursal_id: 1,
+                  precio,
                 } as InventarioItem);
               }
             })
@@ -272,10 +253,15 @@ export default function InventoryHardwareSection() {
           >
             <div className="flex items-center gap-3 mb-2">
               {obtenerIcono(item.tipo, item.especificacion || item.descripcion)}
-              <span className="font-semibold text-gray-800"> {item.descripcion || item.especificacion}</span>               
+              <span className="font-semibold text-gray-800">
+                {item.descripcion || item.especificacion}
+              </span>
             </div>
             <span className="text-sm text-gray-600">
               Cantidad: {item.cantidad}
+            </span>
+            <span className="text-sm text-gray-600">
+              💲 Precio: {Number(item.precio || 0).toFixed(2)} MXN
             </span>
             <span className="text-xs text-gray-400 mt-1">
               Estado: {item.estado}
