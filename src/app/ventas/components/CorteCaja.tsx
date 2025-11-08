@@ -1,6 +1,7 @@
 'use client'
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
+import Swal from 'sweetalert2'
 import {
   FaMoneyBillWave,
   FaShoppingCart,
@@ -50,11 +51,9 @@ export default function CorteCajaSection() {
       const resp = await fetch(`${API_URL}/api/caja/resumen`, { credentials: 'include' })
       if (!resp.ok) return
       const data = await resp.json()
-      // backend devuelve total_ventas, total_gastos, total_ingresos
       setVentas(Number(data.total_ventas) || 0)
       setGastos(Number(data.total_gastos) || 0)
       setIngresos(Number(data.total_ingresos) || 0)
-
     } catch (err) {
       console.error('Error cargando resumen de caja:', err)
     }
@@ -63,9 +62,15 @@ export default function CorteCajaSection() {
   // 🔹 Registrar movimiento (gasto / ingreso)
   const registrarMovimiento = async () => {
     if (!monto || !tipoMovimiento || !usuarioId || !sucursalId) {
-      alert('Faltan datos')
+      Swal.fire({
+        icon: 'warning',
+        title: 'Datos incompletos',
+        text: 'Por favor completa todos los campos antes de registrar el movimiento.',
+        confirmButtonColor: '#4F46E5'
+      })
       return
     }
+
     try {
       const resp = await fetch(`${API_URL}/api/caja/movimiento`, {
         method: 'POST',
@@ -79,33 +84,80 @@ export default function CorteCajaSection() {
           usuario_id: usuarioId
         })
       })
+
       if (resp.ok) {
-        alert('✅ Movimiento registrado correctamente')
+        Swal.fire({
+          icon: 'success',
+          title: 'Movimiento registrado',
+          text: 'El movimiento fue guardado correctamente.',
+          confirmButtonColor: '#4F46E5'
+        })
         setMonto('')
         setDescripcion('')
         obtenerResumen(sucursalId)
         obtenerCortes(sucursalId)
       } else {
-        alert('❌ Error al registrar el movimiento')
+        Swal.fire({
+          icon: 'error',
+          title: 'Error al registrar',
+          text: 'Hubo un problema al registrar el movimiento.',
+          confirmButtonColor: '#4F46E5'
+        })
       }
     } catch (err) {
       console.error('Error registrando movimiento:', err)
+      Swal.fire({
+        icon: 'error',
+        title: 'Error inesperado',
+        text: 'No se pudo registrar el movimiento.',
+        confirmButtonColor: '#4F46E5'
+      })
     }
   }
 
   // 🔹 Generar corte de caja
   const generarCorte = async () => {
+    const confirm = await Swal.fire({
+      title: '¿Generar corte de caja?',
+      text: 'Esto cerrará el balance actual y registrará un nuevo corte.',
+      icon: 'question',
+      showCancelButton: true,
+      confirmButtonColor: '#16A34A',
+      cancelButtonColor: '#DC2626',
+      confirmButtonText: 'Sí, generar corte'
+    })
+
+    if (!confirm.isConfirmed) return
+
     try {
       const resp = await fetch(`${API_URL}/api/caja/corte`, {
         method: 'POST',
         credentials: 'include'
       })
       if (resp.ok) {
-        alert('✅ Corte de caja generado correctamente')
+        Swal.fire({
+          icon: 'success',
+          title: 'Corte generado',
+          text: 'El corte de caja se generó correctamente.',
+          confirmButtonColor: '#16A34A'
+        })
         obtenerCortes(sucursalId)
-      } else alert('❌ Error al generar el corte de caja')
+      } else {
+        Swal.fire({
+          icon: 'error',
+          title: 'Error',
+          text: 'No se pudo generar el corte de caja.',
+          confirmButtonColor: '#4F46E5'
+        })
+      }
     } catch (err) {
       console.error('Error generando corte de caja:', err)
+      Swal.fire({
+        icon: 'error',
+        title: 'Error inesperado',
+        text: 'Hubo un problema al generar el corte de caja.',
+        confirmButtonColor: '#4F46E5'
+      })
     }
   }
 
@@ -228,7 +280,11 @@ export default function CorteCajaSection() {
                   <td className="py-2 px-4 text-green-700">${m.total_ventas}</td>
                   <td className="py-2 px-4 text-red-700">${m.total_gastos}</td>
                   <td className="py-2 px-4 text-blue-700">${m.total_ingresos}</td>
-                  <td className={`py-2 px-4 font-semibold ${m.balance_final >= 0 ? 'text-green-700' : 'text-red-700'}`}>
+                  <td
+                    className={`py-2 px-4 font-semibold ${
+                      m.balance_final >= 0 ? 'text-green-700' : 'text-red-700'
+                    }`}
+                  >
                     ${m.balance_final}
                   </td>
                 </tr>

@@ -425,6 +425,27 @@ export default function SpecsCard() {
               cantidad: sto.cantidad || 1,
             }),
           });
+        }  
+        try {
+          const response = await fetch(`${API_URL}/api/inventario/registrar-equipo`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            credentials: "include",
+            body: JSON.stringify({
+              equipo_id: data.id,           // ID del equipo recién guardado
+              sucursal_id: data.sucursal_id, // Enviar sucursal si está disponible
+              precio: data.precio || 0,      // Si manejas precio en el equipo
+            }),
+          });
+
+          if (!response.ok) {
+            const errorData = await response.json();
+            console.error("❌ Error registrando equipo en inventario:", errorData);
+          } else {
+            console.log("✅ Equipo registrado en inventario correctamente.");
+          }
+        } catch (error) {
+          console.error("⚠️ Error en la petición de registro de inventario:", error);
         }
       } else {
         for (const ram of data.ramModules.filter((mod:any) => mod.memoria_ram_id)) {
