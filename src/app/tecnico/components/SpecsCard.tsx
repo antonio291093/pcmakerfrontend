@@ -216,7 +216,7 @@ export default function SpecsCard() {
 
     for (const [id, cantidad] of Object.entries(ramSolicitada)) {
       const res = await fetch(
-        `${API_URL}/api/inventario/validar-stock?memoria_ram_id=${id}&cantidad=${cantidad}`,
+        `${API_URL}/api/inventario/validar-stock?memoria_ram_id=${id}&cantidad=${cantidad}&sucursal_id=${sucursalId}`,
         { credentials: 'include' }
       );
       const data = await res.json();
@@ -231,7 +231,7 @@ export default function SpecsCard() {
     }
     for (const [id, cantidad] of Object.entries(stoSolicitada)) {
       const res = await fetch(
-        `${API_URL}/api/inventario/validar-stock?almacenamiento_id=${id}&cantidad=${cantidad}`,
+        `${API_URL}/api/inventario/validar-stock?almacenamiento_id=${id}&cantidad=${cantidad}&sucursal_id=${sucursalId}`,
         { credentials: 'include' }
       );
       const data = await res.json();
@@ -412,6 +412,7 @@ export default function SpecsCard() {
             body: JSON.stringify({
               memoria_ram_id: ram.memoria_ram_id,
               cantidad: ram.cantidad || 1,
+              sucursal_id:sucursalId,
             }),
           });
         }
@@ -423,6 +424,7 @@ export default function SpecsCard() {
             body: JSON.stringify({
               almacenamiento_id: sto.almacenamiento_id,
               cantidad: sto.cantidad || 1,
+              sucursal_id:sucursalId,
             }),
           });
         }  
@@ -432,9 +434,9 @@ export default function SpecsCard() {
             headers: { "Content-Type": "application/json" },
             credentials: "include",
             body: JSON.stringify({
-              equipo_id: data.id,           // ID del equipo recién guardado
-              sucursal_id: data.sucursal_id, // Enviar sucursal si está disponible
-              precio: data.precio || 0,      // Si manejas precio en el equipo
+              equipo_id: equipoGuardado.id, 
+              sucursal_id: sucursalId,
+              precio: 0,
             }),
           });
 
@@ -528,11 +530,23 @@ export default function SpecsCard() {
         }))
     };
 
-    // Validar stock solo en armado
     if (selectedEstadoId === 4) {
-      if (!(await validarStock(ramModules, storages))) {
+      // Validar que haya al menos un módulo RAM y un almacenamiento seleccionado
+      const tieneRam = ramModules.some((mod) => mod.memoria_ram_id);
+      const tieneAlmacenamiento = storages.some((sto) => sto.almacenamiento_id);
+
+      if (!tieneRam || !tieneAlmacenamiento) {
+        await Swal.fire({
+          icon: "warning",
+          title: "Componentes faltantes",
+          text: "Debes seleccionar al menos un módulo de RAM y un tipo de almacenamiento antes de guardar.",
+        });
         return;
       }
+
+      // Si sí hay componentes, validar stock
+      const stockValido = await validarStock(ramModules, storages);
+      if (!stockValido) return;
     }
 
     const resultado = await guardarRevision(dataAGuardar);
