@@ -50,8 +50,9 @@ interface EquipoArmado {
 export default function InventoryHardwareSection() {
   const [inventario, setInventario] = useState<InventarioItem[]>([]);
   const [equiposArmados, setEquiposArmados] = useState<EquipoArmado[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [editando, setEditando] = useState<InventarioItem | null>(null);
+  const [loading, setLoading] = useState(true);  
+  const [editandoInventario, setEditandoInventario] = useState<InventarioItem | null>(null);
+  const [editandoEquipo, setEditandoEquipo] = useState<EquipoArmado | null>(null);
 
   const API_URL = process.env.NEXT_PUBLIC_API_URL;
 
@@ -91,13 +92,13 @@ export default function InventoryHardwareSection() {
 
   // 🔹 Modal de edición (sin cambios)
   useEffect(() => {
-    if (editando) {
+    if (editandoInventario) {
       Swal.fire({
         title: 'Editar artículo',
         html: `
-          <input id="swal-descripcion" class="swal2-input" value="${editando.descripcion || ''}" placeholder="Descripción">
-          <input id="swal-cantidad" type="number" class="swal2-input" value="${editando.cantidad}" placeholder="Cantidad">
-          <input id="swal-precio" type="number" step="0.01" min="0" class="swal2-input" value="${editando.precio || 0}" placeholder="Precio (MXN)">
+          <input id="swal-descripcion" class="swal2-input" value="${editandoInventario.descripcion || ''}" placeholder="Descripción">
+          <input id="swal-cantidad" type="number" class="swal2-input" value="${editandoInventario.cantidad}" placeholder="Cantidad">
+          <input id="swal-precio" type="number" step="0.01" min="0" class="swal2-input" value="${editandoInventario.precio || 0}" placeholder="Precio (MXN)">
         `,
         focusConfirm: false,
         showCancelButton: true,
@@ -113,24 +114,108 @@ export default function InventoryHardwareSection() {
             return null;
           }
 
-          return { ...editando, descripcion, cantidad, precio };
+          return { ...editandoInventario, descripcion, cantidad, precio };
         },
       }).then((res) => {
         if (res.isConfirmed && res.value) {
           guardarInventario(res.value as InventarioItem);
         } else {
-          setEditando(null);
+          setEditandoInventario(null);
         }
       });
     }
-  }, [editando]);
+  }, [editandoInventario]);
+
+  // useEffect principal
+  useEffect(() => {
+    if (!editandoEquipo) return;
+
+    const abrirModalEdicion = (datosActuales:any) => {
+      Swal.fire({
+        title: 'Editar equipo armado',
+        html: `
+          <input id="swal-nombre" class="swal2-input" value="${datosActuales.nombre}" placeholder="Nombre del equipo">
+          <input id="swal-procesador" class="swal2-input" value="${datosActuales.procesador}" placeholder="Procesador">
+          <input id="swal-precio" type="number" step="0.01" class="swal2-input" value="${datosActuales.precio}" placeholder="Precio">
+          <div style="display:flex;gap:6px;align-items:center;">
+            <input id="swal-ram" class="swal2-input" value="${datosActuales.memorias_ram.join(', ')}" placeholder="RAM (separa por coma)" style="flex:1;">
+            <button id="btn-seleccionar-ram" class="swal2-confirm swal2-styled" style="padding:4px 8px;font-size:12px;">🔍</button>
+          </div>
+          <div style="display:flex;gap:6px;align-items:center;">
+            <input id="swal-almacenamiento" class="swal2-input" value="${datosActuales.almacenamientos.join(', ')}" placeholder="Almacenamientos (separa por coma)" style="flex:1;">
+            <button id="btn-seleccionar-almacenamiento" class="swal2-confirm swal2-styled" style="padding:4px 8px;font-size:12px;">🔍</button>
+          </div>
+        `,
+        showCancelButton: true,
+        confirmButtonText: 'Guardar cambios',
+        didOpen: () => {
+          // 🔹 Botón seleccionar RAM
+          document.getElementById("btn-seleccionar-ram")?.addEventListener("click", async () => {
+            const { default: SelectorRamModal } = await import("./SelectorRamModal");
+
+            Swal.close(); // Cierra el modal principal temporalmente
+
+            // Abrimos el modal de selección
+            await SelectorRamModal({
+              onSelect: (items) => {
+                const nuevasRams = items.map((i) => i.descripcion);
+                const nuevosDatos = { ...datosActuales, memorias_ram: nuevasRams };
+                abrirModalEdicion(nuevosDatos); // reabre con cambios
+              },
+              onCancel: () => {
+                abrirModalEdicion(datosActuales); // reabre sin cambios
+              },
+            });
+          });
+
+          // 🔹 Botón seleccionar almacenamiento
+          document.getElementById("btn-seleccionar-almacenamiento")?.addEventListener("click", async () => {
+            const { default: SelectorAlmacenamientoModal } = await import("./SelectorAlmacenamientoModal");
+
+            Swal.close(); // Cierra el modal principal
+
+            await SelectorAlmacenamientoModal({
+              onSelect: (items) => {
+                const nuevosAlm = items.map((i) => i.descripcion);
+                const nuevosDatos = { ...datosActuales, almacenamientos: nuevosAlm };
+                abrirModalEdicion(nuevosDatos); // reabre con cambios
+              },
+              onCancel: () => {
+                abrirModalEdicion(datosActuales); // reabre sin cambios
+              },
+            });
+          });
+        },
+        preConfirm: () => {
+          const nombre = (document.getElementById('swal-nombre') as HTMLInputElement).value;
+          const procesador = (document.getElementById('swal-procesador') as HTMLInputElement).value;
+          const precio = parseFloat((document.getElementById('swal-precio') as HTMLInputElement).value);
+          const memorias_ram = (document.getElementById('swal-ram') as HTMLInputElement).value.split(',').map(r => r.trim()).filter(r => r);
+          const almacenamientos = (document.getElementById('swal-almacenamiento') as HTMLInputElement).value.split(',').map(a => a.trim()).filter(a => a);
+
+          if (!nombre || !procesador || isNaN(precio)) {
+            Swal.showValidationMessage('Completa todos los campos obligatorios');
+            return false;
+          }
+
+          return { ...datosActuales, nombre, procesador, precio, memorias_ram, almacenamientos };
+        },
+      }).then((res) => {
+        if (res.isConfirmed && res.value) guardarEquipoArmado(res.value);
+        else setEditandoEquipo(null);
+      });
+    };
+
+    abrirModalEdicion(editandoEquipo);
+  }, [editandoEquipo]);
+
 
   // 🔸 Guardar / editar artículo
   const guardarInventario = async (item: InventarioItem) => {
     try {
-      const metodo = editando ? 'PUT' : 'POST';
-      const url = editando
-        ? `${API_URL}/api/inventario/${editando.id}`
+      const metodo = editandoInventario ? 'PUT' : 'POST';
+      const url = editandoInventario
+        ? `${API_URL}/api/inventario/${editandoInventario.id}`
         : `${API_URL}/api/inventario/general`;
 
       const resp = await fetch(url, {
@@ -145,7 +230,7 @@ export default function InventoryHardwareSection() {
 
       nuevo.descripcion = nuevo.descripcion || nuevo.especificacion;
 
-      if (editando) {
+      if (editandoInventario) {
         setInventario((prev) => prev.map((i) => (i.id === nuevo.id ? nuevo : i)));
         Swal.fire('Actualizado', 'El artículo se actualizó correctamente', 'success');
       } else {
@@ -153,10 +238,34 @@ export default function InventoryHardwareSection() {
         Swal.fire('Agregado', 'Artículo agregado al inventario', 'success');
       }
 
-      setEditando(null);
+      setEditandoInventario(null);
     } catch (err) {
       console.error(err);
       Swal.fire('Error', 'No se pudo guardar el artículo', 'error');
+    }
+  };
+
+  // 🔸 Guardar o actualizar equipo armado
+  const guardarEquipoArmado = async (equipo: EquipoArmado) => {
+    try {
+      const resp = await fetch(`${API_URL}/api/inventario/equipos-armados/${equipo.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify(equipo),
+      });
+
+      if (!resp.ok) throw new Error('Error al actualizar equipo armado');
+      const actualizado = await resp.json();
+
+      setEquiposArmados((prev) =>
+        prev.map((e) => (e.id === actualizado.id ? actualizado : e))
+      );
+
+      Swal.fire('Actualizado', 'El equipo fue editado correctamente', 'success');
+      setEditandoEquipo(null);
+    } catch {
+      Swal.fire('Error', 'No se pudo actualizar el equipo', 'error');
     }
   };
 
@@ -284,7 +393,7 @@ export default function InventoryHardwareSection() {
             <span className="text-xs text-gray-400 mt-1">Estado: {item.estado}</span>
 
             <div className="flex gap-3 mt-4">
-              <button onClick={() => setEditando(item)} className="text-blue-600 hover:text-blue-800">
+              <button onClick={() => setEditandoInventario(item)} className="text-blue-600 hover:text-blue-800">
                 <FaEdit />
               </button>
               <button onClick={() => eliminarInventario(item.id)} className="text-red-500 hover:text-red-700">
@@ -301,37 +410,70 @@ export default function InventoryHardwareSection() {
       </h2>
 
       {equiposArmados.length === 0 ? (
-        <p className="text-gray-500 text-center py-4">No hay equipos armados registrados.</p>
+        <p className="text-gray-500 text-center py-4">
+          No hay equipos armados registrados.
+        </p>
       ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
           {equiposArmados.map((eq) => (
             <motion.div
               key={eq.id}
               whileHover={{ scale: 1.02 }}
-              className="p-4 rounded-lg bg-gray-50 shadow-sm border border-gray-100"
+              className="p-5 rounded-2xl bg-white shadow-md border border-gray-200 flex flex-col justify-between"
             >
-              <div className="flex items-center justify-between mb-2">
-                <span className="font-semibold text-gray-800">{eq.nombre}</span>
-                <span className="text-xs text-gray-500">#{eq.etiqueta}</span>
+              {/* 🔹 Encabezado */}
+              <div>
+                <div className="flex items-center justify-between mb-2">
+                  <h3 className="font-semibold text-gray-800 text-lg leading-tight">
+                    {eq.nombre}
+                  </h3>
+                  <span className="text-xs text-gray-500 font-mono">
+                    #{eq.etiqueta}
+                  </span>
+                </div>
+
+                {/* 🔹 Especificaciones */}
+                <div className="space-y-1 mt-2 text-sm text-gray-600">
+                  <p>🧠 {eq.procesador}</p>
+                  <p>💾 RAM: {eq.memorias_ram?.join(", ") || "N/A"}</p>
+                  <p>📦 Almacenamiento: {eq.almacenamientos?.join(", ") || "N/A"}</p>
+                  <p className="flex items-center gap-1 mt-1">
+                    <FaStore className="text-gray-500" />
+                    {eq.sucursal_nombre}
+                  </p>
+                </div>
               </div>
-              <span className="text-sm text-gray-600">🧠 {eq.procesador}</span>
-              <span className="text-sm text-gray-600 mt-1">
-                💾 RAM: {eq.memorias_ram?.join(', ') || 'N/A'}
-              </span>
-              <span className="text-sm text-gray-600">
-                📦 Almacenamiento: {eq.almacenamientos?.join(', ') || 'N/A'}
-              </span>
-              <span className="text-sm text-gray-600 flex items-center gap-1 mt-1">
-                <FaStore className="text-gray-500" /> {eq.sucursal_nombre}
-              </span>
-              <span className="text-sm text-gray-800 mt-2 font-medium">
-                💲 Precio: {Number(eq.precio || 0).toFixed(2)} MXN
-              </span>
-              <span className="text-xs text-gray-400 mt-1">Estado: {eq.estado}</span>
+
+              {/* 🔹 Precio y estado */}
+              <div className="mt-4 pt-3 border-t border-gray-100">
+                <p className="text-base font-semibold text-green-700">
+                  💲 Precio: {Number(eq.precio || 0).toFixed(2)} MXN
+                </p>
+                <p className="text-xs text-gray-400">Estado: {eq.estado}</p>
+
+                {/* 🔹 Botones de acción */}
+                <div className="flex gap-4 mt-3">
+                  <button
+                    onClick={() => setEditandoEquipo(eq)} // ⚙️ Igual que en el inventario
+                    className="text-blue-600 hover:text-blue-800"
+                    title="Editar equipo"
+                  >
+                    <FaEdit />
+                  </button>
+                  <button
+                    onClick={() => eliminarInventario(eq.id)}
+                    className="text-red-500 hover:text-red-700"
+                    title="Eliminar equipo"
+                  >
+                    <FaTrash />
+                  </button>
+                </div>
+              </div>
             </motion.div>
           ))}
         </div>
       )}
+
     </motion.div>
   );
 }
