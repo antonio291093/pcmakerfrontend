@@ -21,6 +21,7 @@ import {
   FaLaptopCode,
   FaStore
 } from 'react-icons/fa';
+import { useRouter } from 'next/navigation'
 
 interface InventarioItem {
   id: number;
@@ -34,17 +35,22 @@ interface InventarioItem {
   precio?: number;
 }
 
-interface EquipoArmado {
+export interface EquipoArmado {
   id: number;
   nombre: string;
   procesador: string;
   etiqueta: string;
+  sucursal_id?: number;
   sucursal_nombre: string;
   precio: number;
   estado: string;
   disponibilidad: boolean;
-  memorias_ram: string[];
-  almacenamientos: string[];
+
+  // 🔹 Estas pueden o no existir al momento de enviar el payload
+  memorias_ram?: string[];
+  almacenamientos?: string[];
+  memorias_ram_ids?: number[];
+  almacenamientos_ids?: number[];
 }
 
 export default function InventoryHardwareSection() {
@@ -52,14 +58,29 @@ export default function InventoryHardwareSection() {
   const [equiposArmados, setEquiposArmados] = useState<EquipoArmado[]>([]);
   const [loading, setLoading] = useState(true);  
   const [editandoInventario, setEditandoInventario] = useState<InventarioItem | null>(null);
-  const [editandoEquipo, setEditandoEquipo] = useState<EquipoArmado | null>(null);
+  const [editandoEquipo, setEditandoEquipo] = useState<EquipoArmado | null>(null);  
+  const [sucursalId, setSucursalId] = useState<number | null>(null);
+  const router = useRouter()      
 
   const API_URL = process.env.NEXT_PUBLIC_API_URL;
 
+   // Al montar, obtener info del usuario y sucursal
+    useEffect(() => {
+      fetch(`${API_URL}/api/usuarios/me`, { credentials: 'include' })
+        .then(res => {
+          if (!res.ok) throw new Error('No autenticado');
+          return res.json();
+        })
+        .then(data => {          
+          setSucursalId(data.user.sucursal_id); // Aquí sacas el sucursal_id
+        })
+        .catch(() => router.push('/login'));
+    }, [router]);
+
   // 🔹 Cargar inventario de accesorios
   const cargarInventario = async () => {
-    try {
-      const resp = await fetch(`${API_URL}/api/inventario`, { credentials: 'include' });
+    try {      
+      const resp = await fetch(`${API_URL}/api/inventario?sucursal_id=${sucursalId}`, { credentials: 'include' });
       if (!resp.ok) throw new Error('Error al obtener inventario');
       const data = await resp.json();
       setInventario(data);
@@ -72,7 +93,7 @@ export default function InventoryHardwareSection() {
   // 🔹 Cargar equipos armados
   const cargarEquiposArmados = async () => {
     try {
-      const resp = await fetch(`${API_URL}/api/inventario/equipos-armados`, { credentials: 'include' });
+      const resp = await fetch(`${API_URL}/api/inventario/equipos-armados?sucursal_id=${sucursalId}`, { credentials: 'include' });
       if (!resp.ok) throw new Error('Error al obtener equipos armados');
       const data = await resp.json();
       setEquiposArmados(data);
@@ -83,12 +104,13 @@ export default function InventoryHardwareSection() {
   };
 
   useEffect(() => {
+    if (!sucursalId) return;
     (async () => {
       setLoading(true);
       await Promise.all([cargarInventario(), cargarEquiposArmados()]);
       setLoading(false);
     })();
-  }, []);
+  }, [sucursalId]);
 
   // 🔹 Modal de edición (sin cambios)
   useEffect(() => {
@@ -126,28 +148,30 @@ export default function InventoryHardwareSection() {
     }
   }, [editandoInventario]);
 
-  // useEffect principal
   useEffect(() => {
     if (!editandoEquipo) return;
 
-    const abrirModalEdicion = (datosActuales:any) => {
+    const abrirModalEdicion = (datosActuales: any) => {
       Swal.fire({
         title: 'Editar equipo armado',
         html: `
           <input id="swal-nombre" class="swal2-input" value="${datosActuales.nombre}" placeholder="Nombre del equipo">
           <input id="swal-procesador" class="swal2-input" value="${datosActuales.procesador}" placeholder="Procesador">
           <input id="swal-precio" type="number" step="0.01" class="swal2-input" value="${datosActuales.precio}" placeholder="Precio">
+
           <div style="display:flex;gap:6px;align-items:center;">
-            <input id="swal-ram" class="swal2-input" value="${datosActuales.memorias_ram.join(', ')}" placeholder="RAM (separa por coma)" style="flex:1;">
+            <input id="swal-ram" class="swal2-input" value="${datosActuales.memorias_ram?.join(', ') || ''}" placeholder="RAM (separa por coma)" style="flex:1;">
             <button id="btn-seleccionar-ram" class="swal2-confirm swal2-styled" style="padding:4px 8px;font-size:12px;">🔍</button>
           </div>
+
           <div style="display:flex;gap:6px;align-items:center;">
-            <input id="swal-almacenamiento" class="swal2-input" value="${datosActuales.almacenamientos.join(', ')}" placeholder="Almacenamientos (separa por coma)" style="flex:1;">
+            <input id="swal-almacenamiento" class="swal2-input" value="${datosActuales.almacenamientos?.join(', ') || ''}" placeholder="Almacenamientos (separa por coma)" style="flex:1;">
             <button id="btn-seleccionar-almacenamiento" class="swal2-confirm swal2-styled" style="padding:4px 8px;font-size:12px;">🔍</button>
           </div>
         `,
         showCancelButton: true,
         confirmButtonText: 'Guardar cambios',
+
         didOpen: () => {
           // 🔹 Botón seleccionar RAM
           document.getElementById("btn-seleccionar-ram")?.addEventListener("click", async () => {
@@ -155,11 +179,18 @@ export default function InventoryHardwareSection() {
 
             Swal.close(); // Cierra el modal principal temporalmente
 
-            // Abrimos el modal de selección
             await SelectorRamModal({
               onSelect: (items) => {
+                // 🔸 Extraemos tanto las descripciones como los IDs
                 const nuevasRams = items.map((i) => i.descripcion);
-                const nuevosDatos = { ...datosActuales, memorias_ram: nuevasRams };
+                const nuevasRamIds = items.map((i) => i.id);
+
+                const nuevosDatos = {
+                  ...datosActuales,
+                  memorias_ram: nuevasRams,
+                  memorias_ram_ids: nuevasRamIds,
+                };
+
                 abrirModalEdicion(nuevosDatos); // reabre con cambios
               },
               onCancel: () => {
@@ -177,7 +208,14 @@ export default function InventoryHardwareSection() {
             await SelectorAlmacenamientoModal({
               onSelect: (items) => {
                 const nuevosAlm = items.map((i) => i.descripcion);
-                const nuevosDatos = { ...datosActuales, almacenamientos: nuevosAlm };
+                const nuevosAlmIds = items.map((i) => i.id);
+
+                const nuevosDatos = {
+                  ...datosActuales,
+                  almacenamientos: nuevosAlm,
+                  almacenamientos_ids: nuevosAlmIds,
+                };
+
                 abrirModalEdicion(nuevosDatos); // reabre con cambios
               },
               onCancel: () => {
@@ -186,6 +224,7 @@ export default function InventoryHardwareSection() {
             });
           });
         },
+
         preConfirm: () => {
           const nombre = (document.getElementById('swal-nombre') as HTMLInputElement).value;
           const procesador = (document.getElementById('swal-procesador') as HTMLInputElement).value;
@@ -198,7 +237,17 @@ export default function InventoryHardwareSection() {
             return false;
           }
 
-          return { ...datosActuales, nombre, procesador, precio, memorias_ram, almacenamientos };
+          // Conserva los IDs si existen
+          return {
+            ...datosActuales,
+            nombre,
+            procesador,
+            precio,
+            memorias_ram,
+            almacenamientos,
+            memorias_ram_ids: datosActuales.memorias_ram_ids || [],
+            almacenamientos_ids: datosActuales.almacenamientos_ids || [],
+          };
         },
       }).then((res) => {
         if (res.isConfirmed && res.value) guardarEquipoArmado(res.value);
@@ -246,28 +295,51 @@ export default function InventoryHardwareSection() {
   };
 
   // 🔸 Guardar o actualizar equipo armado
-  const guardarEquipoArmado = async (equipo: EquipoArmado) => {
-    try {
-      const resp = await fetch(`${API_URL}/api/inventario/equipos-armados/${equipo.id}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify(equipo),
-      });
+const guardarEquipoArmado = async (equipo: EquipoArmado) => {
+  try {
+    // 🧹 Crear una copia limpia del equipo antes de enviarlo
+    const equipoLimpio = { ...equipo };
 
-      if (!resp.ok) throw new Error('Error al actualizar equipo armado');
-      const actualizado = await resp.json();
-
-      setEquiposArmados((prev) =>
-        prev.map((e) => (e.id === actualizado.id ? actualizado : e))
-      );
-
-      Swal.fire('Actualizado', 'El equipo fue editado correctamente', 'success');
-      setEditandoEquipo(null);
-    } catch {
-      Swal.fire('Error', 'No se pudo actualizar el equipo', 'error');
+    // ⚙️ Si los arrays están vacíos, los quitamos del payload
+    // (esto evita que se reemplace por null en la base de datos)
+    if (equipoLimpio.memorias_ram_ids?.length === 0) {
+      delete equipoLimpio.memorias_ram_ids;
     }
-  };
+    if (equipoLimpio.almacenamientos_ids?.length === 0) {
+      delete equipoLimpio.almacenamientos_ids;
+    }
+
+    // También puedes limpiar los arrays de nombres si no son relevantes para el backend
+    if (equipoLimpio.memorias_ram?.length === 0) {
+      delete equipoLimpio.memorias_ram;
+    }
+    if (equipoLimpio.almacenamientos?.length === 0) {
+      delete equipoLimpio.almacenamientos;
+    }
+
+    console.log("📤 Enviando equipo al backend:", equipoLimpio);
+
+    const resp = await fetch(`${API_URL}/api/inventario/equipos-armados/${equipo.id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify(equipoLimpio),
+    });
+
+    if (!resp.ok) throw new Error('Error al actualizar equipo armado');
+    const actualizado = await resp.json();
+
+    setEquiposArmados((prev) =>
+      prev.map((e) => (e.id === actualizado.id ? actualizado : e))
+    );
+
+    Swal.fire('Actualizado', 'El equipo fue editado correctamente', 'success');
+    setEditandoEquipo(null);
+  } catch (error) {
+    console.error("❌ Error al actualizar equipo armado:", error);
+    Swal.fire('Error', 'No se pudo actualizar el equipo', 'error');
+  }
+};
 
   // 🔸 Eliminar artículo
   const eliminarInventario = async (id: number) => {
@@ -361,7 +433,7 @@ export default function InventoryHardwareSection() {
                   cantidad: 1,
                   disponibilidad: true,
                   estado,
-                  sucursal_id: 1,
+                  sucursal_id: sucursalId,
                   precio,
                 } as InventarioItem);
               }
